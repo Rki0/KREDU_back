@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
 
 const commentsCommentsSchema = mongoose.Schema({
-  // id: {
-  //   type: Number,
-  // },
+  innerCommentsId: {
+    type: Number,
+  },
   nickname: {
     type: String,
   },
@@ -16,25 +16,33 @@ const commentsCommentsSchema = mongoose.Schema({
 });
 
 const lectureCommentsSchema = mongoose.Schema({
-  // id: {
-  //   type: Number,
-  // },
+  outterCommentsId: {
+    type: Number,
+    default: 0,
+  },
   nickname: {
     type: String,
   },
   email: {
     type: String,
   },
+  date: {
+    type: String,
+  },
+  description: {
+    type: String,
+  },
   like: {
     type: Number,
+    default: 0,
   },
   comments: [commentsCommentsSchema],
 });
 
 const lectureSchema = mongoose.Schema({
-  // id: {
-  //   type: Number,
-  // },
+  lectureId: {
+    type: Number,
+  },
   title: {
     type: String,
   },
@@ -60,6 +68,28 @@ const lectureSchema = mongoose.Schema({
   },
   comments: [lectureCommentsSchema],
 });
+
+//////// update userId up! ////////
+const { Counter } = require("./Counter");
+
+lectureSchema.post("save", function (result) {
+  let lecture = this;
+
+  Counter.findOne({ id: 0 }, (err, res) => {
+    if (err) return err;
+
+    let up = res.lectureIdCounter + 1;
+
+    Counter.updateOne({ id: 0 }, { lectureIdCounter: up }, (err) => {
+      if (err) return err;
+
+      Lecture.updateOne({ title: lecture.title }, { lectureId: up }, (err) => {
+        if (err) return err;
+      });
+    });
+  });
+});
+////////////////
 
 const Lecture = mongoose.model("Lecture", lectureSchema);
 

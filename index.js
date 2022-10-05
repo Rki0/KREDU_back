@@ -15,13 +15,13 @@ const mongoose = require("mongoose");
 
 const config = require("./config/key");
 
+const session = require("express-session");
+const MongoStore = require("connect-mongo");
+
 mongoose
   .connect(config.mongoURI)
   .then(() => console.log("MongoDB Connected..."))
   .catch((err) => console.log("Error", err));
-
-const session = require("express-session");
-const MongoStore = require("connect-mongo");
 
 app.use(
   session({
@@ -85,6 +85,7 @@ app.post("/api/users/login", (req, res) => {
 
       // 아이디, 비밀번호 일치 시 유저 정보가 들어있는 세션 생성
       req.session.email = req.body.email;
+      req.session.nickname = user.nickname;
       req.session.logined = true;
 
       // 모델 만들 때 role은 디폴트 값을 0으로 설정되게 했으므로, 그걸 가져와서 사용
@@ -93,6 +94,7 @@ app.post("/api/users/login", (req, res) => {
       return res.status(200).json({
         loginSuccess: true,
         email: req.session.email,
+        nickname: req.session.nickname,
       });
     });
   });
@@ -106,6 +108,7 @@ app.get("/api/users/auth", auth, (req, res) => {
     isAdmin: req.user.role === 0 ? false : true,
     isAuth: true,
     email: req.session.email,
+    nickname: req.session.nickname,
     authSuccess: true,
   });
 });
@@ -123,6 +126,8 @@ app.get("/api/users/logout", (req, res) => {
 });
 
 const { Lecture } = require("./model/Lecture");
+const { response } = require("express");
+const { cookieSecret } = require("./config/prod");
 
 // 강의 등록 라우터
 app.post("/api/lecture/write", (req, res) => {
@@ -147,6 +152,33 @@ app.get("/api/lecture/load/all", (req, res) => {
       lectureList: lectures,
     });
   });
+});
+
+// 하나의 강의 불러오기 라우터
+app.post("/api/lecture/load/one", (req, res) => {
+  Lecture.findOne({ lectureId: req.body.lectureNum }, (err, lecture) => {
+    if (err) return res.json({ loadOneLectureSuccess: false, error: err });
+
+    return res.status(200).json({
+      loadOneLectureSuccess: true,
+      lecture: lecture,
+    });
+  });
+});
+
+// 강의 댓글 등록 라우터
+app.post("/api/lecture/comment", (req, res) => {
+  Lecture.findOneAndUpdate(
+    { lectureId: req.body.lectureNum },
+    { comments: req.body.comments },
+    (err, comment) => {
+      if (err) return res.json({ addCommentSuccess: false, error: err });
+
+      return res.status(200).json({
+        addCommentSuccess: true,
+      });
+    }
+  );
 });
 
 app.get("/", (req, res) => {

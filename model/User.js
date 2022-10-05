@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const likedLectureSchema = mongoose.Schema({
-  id: {
+  likedLectureId: {
     type: Number,
   },
   thumbnail: {
@@ -19,6 +19,10 @@ const likedLectureSchema = mongoose.Schema({
 });
 
 const userSchema = mongoose.Schema({
+  userId: {
+    type: Number,
+    default: 0,
+  },
   nickname: {
     type: String,
     maxlength: 10,
@@ -78,6 +82,28 @@ userSchema.methods.comparePassword = function (plainPassword, callback) {
     callback(null, isMatch);
   });
 };
+////////////////
+
+//////// update userId up! ////////
+const { Counter } = require("./Counter");
+
+userSchema.post("save", function (result) {
+  let user = this;
+
+  Counter.findOne({ id: 0 }, (err, res) => {
+    if (err) return err;
+
+    let up = res.userIdCounter + 1;
+
+    Counter.updateOne({ id: 0 }, { userIdCounter: up }, (err) => {
+      if (err) return err;
+
+      User.updateOne({ email: user.email }, { userId: up }, (err) => {
+        if (err) return err;
+      });
+    });
+  });
+});
 ////////////////
 
 const User = mongoose.model("User", userSchema);
