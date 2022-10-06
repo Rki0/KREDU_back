@@ -66,7 +66,16 @@ const lectureSchema = mongoose.Schema({
     type: Number,
     default: 0,
   },
+  writer: {
+    type: String,
+  },
   comments: [lectureCommentsSchema],
+  // // comments를 직접 연결해놓는 대신
+  // // comments.length를 여기에 숫자만 넣어주자.
+  // // outter댓글이 추가될 때, Lecture의 comments.length 부분을 증가시키는 것으로 댓글수 표현?
+  // commentsNum: {
+  //   type: Number,
+  // },
 });
 
 //////// update userId up! ////////

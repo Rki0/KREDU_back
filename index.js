@@ -167,7 +167,7 @@ app.post("/api/lecture/load/one", (req, res) => {
 });
 
 // 강의 댓글 등록 라우터
-app.post("/api/lecture/comment", (req, res) => {
+app.post("/api/lecture/outtercomment", (req, res) => {
   Lecture.findOneAndUpdate(
     { lectureId: req.body.lectureNum },
     { comments: req.body.comments },
@@ -180,6 +180,29 @@ app.post("/api/lecture/comment", (req, res) => {
     }
   );
 });
+
+// // Lecture랑 comments 데이터 분리해서 진행할 경우
+// // 강의 댓글 등록 라우터
+// const { OutterComment } = require("./model/OutterComment");
+
+// app.post("/api/lecture/outtercomment", (req, res) => {
+//   const newOutterComment = new OutterComment(req.body);
+
+//   console.log(req.body);
+
+//   newOutterComment.save((err, outterInfo) => {
+//     if (err) return res.json({ outterCommentSuccess: false, error: err });
+
+//     // OutterComment 모델 중, 특정 lectureId의 값들만 모아서 길이를 구함.
+//     OutterComment.find({ lectureId: req.body.lectureId }, (err, comments) => {
+//       console.log(comments);
+//     });
+
+//     return res.status(200).json({
+//       outterCommentSuccess: true,
+//     });
+//   });
+// });
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
