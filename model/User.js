@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const likedLectureSchema = mongoose.Schema({
   likedLectureId: {
     type: Number,
+    default: 0,
   },
   thumbnail: {
     type: String,
@@ -10,11 +11,8 @@ const likedLectureSchema = mongoose.Schema({
   link: {
     type: String,
   },
-  see: {
-    type: Number,
-  },
-  like: {
-    type: Number,
+  date: {
+    type: String,
   },
 });
 

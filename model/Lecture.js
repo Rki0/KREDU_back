@@ -56,7 +56,7 @@ const lectureSchema = mongoose.Schema({
     type: String,
   },
   file: {
-    type: String,
+    type: String | Blob,
   },
   like: {
     type: Number,

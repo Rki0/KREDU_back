@@ -95,6 +95,8 @@ app.post("/api/users/login", (req, res) => {
         loginSuccess: true,
         email: req.session.email,
         nickname: req.session.nickname,
+        profile: user.profile,
+        // liked: user.liked,
       });
     });
   });
@@ -132,6 +134,9 @@ const { cookieSecret } = require("./config/prod");
 // 강의 등록 라우터
 app.post("/api/lecture/write", (req, res) => {
   const newLecture = new Lecture(req.body);
+
+  // formData 확인용
+  console.log(req.body);
 
   newLecture.save((err, lectureInfo) => {
     if (err) return res.json({ lectureWriteSuccess: false, error: err });
@@ -203,6 +208,58 @@ app.post("/api/lecture/outtercomment", (req, res) => {
 //     });
 //   });
 // });
+
+// 강의 좋아요 등록 라우터
+app.post("/api/lecture/like", (req, res) => {
+  User.findOneAndUpdate(
+    { email: req.body.email },
+    { liked: req.body.likeList },
+    (err, user) => {
+      if (err) return res.json({ lectureLikeSuccess: false, error: err });
+
+      return res.status(200).json({
+        lectureLikeSuccess: true,
+      });
+
+      // 강의 데이터에서 like 숫자 증가 구현
+    }
+  );
+});
+
+// 강의 좋아요 해제 라우터
+
+// 프로필 사진 등록 라우터
+
+app.post("/api/users/profile/img", (req, res) => {
+  User.findOneAndUpdate(
+    { email: req.body.email },
+    { profile: req.body.profileImg },
+    (err, user) => {
+      if (err) return res.json({ profileImgSuccess: false, error: err });
+      // console.log(user);
+      return res.status(200).json({
+        profileImgSuccess: true,
+      });
+    }
+  );
+});
+
+// 유저 정보 불러오기 라우터
+// 이게 좀 이상한게, 결국 userData가 날라가서 얘로 불러오려고 하는건데
+// 정작 불러오기 위해 필요한 email이 없음.
+app.post("/api/user/all", (req, res) => {
+  User.findOne({ email: req.body.email }, (err, user) => {
+    if (err) return res.json({ loadUserDataSuccess: false, error: err });
+
+    return res.json({
+      loadUserDataSuccess: true,
+      email: user.email,
+      nickname: user.nickname,
+      profile: user.profile,
+      liked: user.liked,
+    });
+  });
+});
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
