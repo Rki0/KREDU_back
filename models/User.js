@@ -45,6 +45,13 @@ const userSchema = Schema({
       ref: "LectureSubComment",
     },
   ],
+  likeQA: [
+    {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      ref: "Qa",
+    },
+  ],
 });
 
 userSchema.plugin(uniqueValidator);

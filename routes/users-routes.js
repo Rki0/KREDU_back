@@ -35,7 +35,9 @@ router.patch(
 
 router.patch("/change/password", userControllers.changePswd);
 
-router.post("/checkLike", userControllers.checkLike);
+router.get("/checkLike/lecture/:lectureId", userControllers.checkLikeLecture);
+
+router.get("/checkLike/qa/:qaId", userControllers.checkLikeQA);
 
 router.get("/likeLecture", userControllers.getLikeLecture);
 
