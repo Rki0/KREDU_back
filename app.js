@@ -8,6 +8,7 @@ const mongoose = require("mongoose");
 const usersRoutes = require("./routes/users-routes");
 const lectureRoutes = require("./routes/lectures-routes");
 const downloadRoutes = require("./routes/download-routes");
+const qaRoutes = require("./routes/qa-routes");
 const HttpError = require("./models/http-error");
 
 const port = process.env.PORT || 8080;
@@ -20,7 +21,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.listen(port);
+app.listen(port, "0.0.0.0");
 console.log(`listening on port ${port}`);
 
 mongoose
@@ -34,13 +35,21 @@ mongoose
     console.log("Connect Fail...", err);
   });
 
+// 강의 데이터
 app.use(
   "/uploads/attachments",
   express.static(path.join("uploads", "attachments"))
 );
 
+// 질문 데이터
+app.use(
+  "/uploads/questions",
+  express.static(path.join("uploads", "questions"))
+);
+
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
+  // res.setHeader("Access-Control-Allow-Origin", "https://kredu.netlify.app");
   res.setHeader(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization"
@@ -53,6 +62,7 @@ app.use((req, res, next) => {
 app.use("/api/download", downloadRoutes);
 app.use("/api/lecture", lectureRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/qa", qaRoutes);
 
 app.use((req, res, next) => {
   const error = new HttpError("Could not find this route.", 404);
