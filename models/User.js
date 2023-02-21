@@ -45,6 +45,13 @@ const userSchema = Schema({
       ref: "LectureSubComment",
     },
   ],
+  myQA: [
+    {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      ref: "Qa",
+    },
+  ],
   likeQA: [
     {
       type: mongoose.Types.ObjectId,
