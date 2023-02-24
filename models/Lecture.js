@@ -2,11 +2,10 @@ const mongoose = require("mongoose");
 
 const Schema = mongoose.Schema;
 
-const qaSchema = Schema({
+const lectureSchema = Schema({
   writer: {
-    type: mongoose.Types.ObjectId,
+    type: String,
     required: true,
-    ref: "User",
   },
   title: {
     type: String,
@@ -20,12 +19,10 @@ const qaSchema = Schema({
     type: String,
     required: true,
   },
-  // file: [
-  //   {
-  //     type: String,
-  //     required: true,
-  //   },
-  // ],
+  link: {
+    type: String,
+    required: true,
+  },
   file: [
     {
       path: {
@@ -45,7 +42,6 @@ const qaSchema = Schema({
   like: {
     type: Number,
     default: 0,
-    min: 0,
   },
   see: {
     type: Number,
@@ -54,15 +50,17 @@ const qaSchema = Schema({
   comments: [
     {
       type: mongoose.Types.ObjectId,
-      ref: "QaComment",
+      required: true,
+      ref: "LectureComment",
     },
   ],
   fixedComment: [
     {
       type: mongoose.Types.ObjectId,
-      ref: "QaComment",
+      required: true,
+      ref: "LectureComment",
     },
   ],
 });
 
-module.exports = mongoose.model("Qa", qaSchema);
+module.exports = mongoose.model("Lecture", lectureSchema);
