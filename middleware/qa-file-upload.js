@@ -8,11 +8,11 @@ const MIME_TYPE_MAP = {
   "application/pdf": "pdf",
 };
 
-const fileUpload = multer({
+const qaFileUpload = multer({
   limits: 10000000,
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, "uploads/attachments");
+      cb(null, "uploads/questions");
     },
     filename: (req, file, cb) => {
       const ext = MIME_TYPE_MAP[file.mimetype];
@@ -38,4 +38,4 @@ const fileUpload = multer({
   },
 });
 
-module.exports = fileUpload;
+module.exports = qaFileUpload;
