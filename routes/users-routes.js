@@ -43,4 +43,6 @@ router.get("/likeLecture", userControllers.getLikeLecture);
 
 router.delete("/dislikeLecture/:lectureId", userControllers.deleteLikeLecture);
 
+router.get("/qas", userControllers.getUserQA);
+
 module.exports = router;
