@@ -11,33 +11,13 @@ router.get("/", lectureControllers.getLectures);
 
 router.get("/:lectureId", lectureControllers.getLecture);
 
-router.patch("/like", lectureControllers.likeLecture);
-
-router.patch("/dislike", lectureControllers.dislikeLecture);
-
 router.get("/comments/:lectureId", lectureControllers.getLectureComments);
-
-router.patch(
-  "/comments/like/:commentId",
-  lectureControllers.likeLectureComment
-);
-
-router.patch(
-  "/comments/dislike/:commentId",
-  lectureControllers.dislikeLectureComment
-);
 
 router.get("/subcomments/:mainCommentId", lectureControllers.getSubComment);
 
-router.patch(
-  "/subcomments/like/:subCommentId",
-  lectureControllers.likeLectureSubComment
-);
+router.get("/fixedComment/:lectureId", lectureControllers.getFixedComment);
 
-router.patch(
-  "/subcomments/dislike/:subCommentId",
-  lectureControllers.dislikeLectureSubComment
-);
+router.get("/search/input", lectureControllers.getSearchedLecture);
 
 router.use(checkAuth);
 
@@ -52,9 +32,9 @@ router.post(
   lectureControllers.createLecture
 );
 
-router.patch("/like/auth", lectureControllers.authedLikeLecture);
+router.patch("/like/:lectureId", lectureControllers.likeLecture);
 
-router.patch("/dislike/auth", lectureControllers.authedDislikeLecture);
+router.patch("/dislike/:lectureId", lectureControllers.dislikeLecture);
 
 router.patch(
   "/update/:lectureId",
@@ -86,13 +66,13 @@ router.patch(
 );
 
 router.patch(
-  "/comments/like/auth/:commentId",
-  lectureControllers.authedLikeLectureComment
+  "/comments/like/:commentId",
+  lectureControllers.likeLectureComment
 );
 
 router.patch(
-  "/comments/dislike/auth/:commentId",
-  lectureControllers.authedDislikeLectureComment
+  "/comments/dislike/:commentId",
+  lectureControllers.dislikeLectureComment
 );
 
 router.post(
@@ -112,13 +92,23 @@ router.patch(
 );
 
 router.patch(
-  "/subcomments/like/auth/:subCommentId",
-  lectureControllers.authedLikeLectureSubComment
+  "/subcomments/like/:subCommentId",
+  lectureControllers.likeLectureSubComment
 );
 
 router.patch(
-  "/subcomments/dislike/auth/:subCommentId",
-  lectureControllers.authedDislikeLectureSubComment
+  "/subcomments/dislike/:subCommentId",
+  lectureControllers.dislikeLectureSubComment
+);
+
+router.patch(
+  "/fixedComment/:lectureId",
+  lectureControllers.createOrChangeFixedComment
+);
+
+router.get(
+  "/fixedComment/delete/:lectureId",
+  lectureControllers.deleteFixedComment
 );
 
 module.exports = router;
