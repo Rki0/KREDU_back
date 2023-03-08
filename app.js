@@ -47,6 +47,9 @@ app.use(
   express.static(path.join("uploads", "questions"))
 );
 
+// 유저 데이터
+app.use("/uploads/users", express.static(path.join("uploads", "users")));
+
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   // res.setHeader("Access-Control-Allow-Origin", "https://kredu.netlify.app");
