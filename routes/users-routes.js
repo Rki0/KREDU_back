@@ -3,7 +3,7 @@ const { check } = require("express-validator");
 
 const checkAuth = require("../middleware/check-auth");
 const userControllers = require("../controllers/user-controllers");
-const fileUpload = require("../middleware/file-upload");
+const profileImgUpload = require("../middleware/user-img-upload");
 
 const router = express.Router();
 
@@ -29,7 +29,7 @@ router.patch("/change/nickname", userControllers.changeNickname);
 
 router.patch(
   "/change/image",
-  fileUpload.single("image"),
+  profileImgUpload.single("image"),
   userControllers.changeImage
 );
 
