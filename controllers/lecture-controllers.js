@@ -41,6 +41,12 @@ const getLecture = async (req, res, next) => {
     next(error);
   }
 
+  if (!lecture) {
+    const error = new HttpError("There is no lecture. Please try again.", 500);
+
+    return next(error);
+  }
+
   res.status(200).json({ lecture });
 };
 
@@ -58,7 +64,13 @@ const createLecture = async (req, res, next) => {
   let lectureFile = [];
 
   for (const file of req.files) {
-    lectureFile.push(file.path);
+    const fileData = {
+      path: file.path,
+      name: file.originalname,
+      ext: file.mimetype.split("/")[1],
+    };
+
+    lectureFile.push(fileData);
   }
 
   const createdLecture = new Lecture({
@@ -85,45 +97,7 @@ const createLecture = async (req, res, next) => {
 };
 
 const likeLecture = async (req, res, next) => {
-  const lectureId = req.body.lectureId;
-
-  let currLecture;
-
-  try {
-    currLecture = await Lecture.findById(lectureId);
-  } catch (err) {
-    const error = new HttpError(
-      "Lecture finding is failed. Please try again.",
-      500
-    );
-
-    next(error);
-  }
-
-  if (!currLecture) {
-    const error = new HttpError("There is no lecture. Please try again.", 500);
-
-    next(error);
-  }
-
-  currLecture.like += 1;
-
-  try {
-    await currLecture.save();
-  } catch (err) {
-    const error = new HttpError(
-      "Increasing like is failed. Please try again.",
-      500
-    );
-
-    next(error);
-  }
-
-  res.status(201).json({ likeSuccess: true });
-};
-
-const authedLikeLecture = async (req, res, next) => {
-  const lectureId = req.body.lectureId;
+  const lectureId = req.params.lectureId;
 
   let currLecture;
 
@@ -167,6 +141,7 @@ const authedLikeLecture = async (req, res, next) => {
 
   try {
     const sess = await mongoose.startSession();
+
     sess.startTransaction();
 
     await currLecture.save({ session: sess });
@@ -189,49 +164,7 @@ const authedLikeLecture = async (req, res, next) => {
 };
 
 const dislikeLecture = async (req, res, next) => {
-  const lectureId = req.body.lectureId;
-
-  let currLecture;
-
-  try {
-    currLecture = await Lecture.findById(lectureId);
-  } catch (err) {
-    const error = new HttpError(
-      "Lecture finding is failed. Please try again.",
-      500
-    );
-
-    next(error);
-  }
-
-  if (!currLecture) {
-    const error = new HttpError("There is no lecture. Please try again.", 500);
-
-    next(error);
-  }
-
-  currLecture.like -= 1;
-
-  if (currLecture.like < 0) {
-    currLecture.like = 0;
-  }
-
-  try {
-    await currLecture.save();
-  } catch (err) {
-    const error = new HttpError(
-      "Decreasing like is failed. Please try again.",
-      500
-    );
-
-    next(error);
-  }
-
-  res.status(201).json({ disLikeSuccess: true });
-};
-
-const authedDislikeLecture = async (req, res, next) => {
-  const lectureId = req.body.lectureId;
+  const lectureId = req.params.lectureId;
 
   let currLecture;
 
@@ -309,26 +242,7 @@ const updateLectureById = async (req, res, next) => {
     );
   }
 
-  const { title, description, link, files } = req.body;
-
-  let lectureFile = [];
-
-  // 기존 첨부 파일이 여러 개였을 때
-  if (typeof files === "object") {
-    for (const file of files) {
-      lectureFile.push(file);
-    }
-  }
-
-  // 기존 첨부 파일이 하나일 때
-  if (typeof files === "string") {
-    lectureFile.push(files);
-  }
-
-  // 새롭게 첨부된 파일에 대한 것
-  for (const file of req.files) {
-    lectureFile.push(file.path);
-  }
+  const { title, description, link, initialFiles } = req.body;
 
   const lectureId = req.params.lectureId;
 
@@ -338,23 +252,77 @@ const updateLectureById = async (req, res, next) => {
     lecture = await Lecture.findById(lectureId);
   } catch (err) {
     const error = new HttpError(
-      "Something went wrong, could not update lecture.",
+      "Lecture finding is failed. Please try again.",
       500
     );
 
     return next(error);
   }
 
+  let lectureFile = [];
+
+  // 새로 추가된 것을 DB에 넣어주기(폴더에는 이미 미들웨어 통해서 넣어졌음)
+  for (const file of req.files) {
+    const fileData = {
+      path: file.path,
+      name: file.originalname,
+      ext: file.mimetype.split("/")[1],
+    };
+
+    lectureFile.push(fileData);
+  }
+
+  // 기존 DB에 존재하는 파일
+  const filesPath = lecture.file;
+
+  let updatedInitialFile = [];
+
+  // 기존 파일이 변경되어, 전부 삭제된 경우는 undefined로 그 어떤 분기 처리도 거치지 않고
+  // updatedInitialFile이 빈 배열인채로 진행되게 한다.
+  if (typeof initialFiles === "string") {
+    // 기존 파일이 변경되어, 1개만 있는 경우
+    updatedInitialFile.push(initialFiles);
+  } else if (typeof initialFiles !== "undefined") {
+    // 기존 파일이 변경되어, 2개 이상인 경우
+    updatedInitialFile = [...initialFiles];
+  }
+
+  let deletedInitialFiles = [];
+
+  if (
+    updatedInitialFile.length !== lecture.file.length &&
+    filesPath.length !== 0
+  ) {
+    const filteredFilesPath = filesPath.filter((file) =>
+      updatedInitialFile.includes(file.path)
+    );
+
+    lecture.file = filteredFilesPath;
+
+    deletedInitialFiles = filesPath.filter(
+      (file) => !updatedInitialFile.includes(file.path)
+    );
+  }
+
+  const newFiles = [...lecture.file, ...lectureFile];
+
   lecture.title = title;
   lecture.description = description;
   lecture.link = link;
-  lecture.file = lectureFile;
+  lecture.file = newFiles;
+
+  // 기존 강의 정보에 있던 것에서 삭제된 것을 폴더와 DB에서 지우기
+  deletedInitialFiles.forEach((filePath) => {
+    fs.unlink(filePath.path, (err) => {
+      console.log(err);
+    });
+  });
 
   try {
     await lecture.save();
   } catch (err) {
     const error = new HttpError(
-      "Something went wrong, could not update lecture.",
+      "Cannot save updated data. Please try again.",
       500
     );
 
@@ -406,7 +374,7 @@ const deleteLectureById = async (req, res, next) => {
   }
 
   filesPath.forEach((filePath) => {
-    fs.unlink(filePath, (err) => {
+    fs.unlink(filePath.path, (err) => {
       console.log(err);
     });
   });
@@ -775,44 +743,6 @@ const likeLectureComment = async (req, res, next) => {
   let comment;
 
   try {
-    comment = await LectureComment.findById(commentId);
-  } catch (err) {
-    const error = new HttpError(
-      "Comment finding is failed. Please try again.",
-      500
-    );
-
-    return next(error);
-  }
-
-  if (!comment) {
-    const error = new HttpError("There is no comment. Please try again.", 500);
-
-    return next(error);
-  }
-
-  comment.like += 1;
-
-  try {
-    await comment.save();
-  } catch (err) {
-    const error = new HttpError(
-      "Saving comment is failed. Please try again.",
-      500
-    );
-
-    return next(error);
-  }
-
-  res.status(200).json({ commentLikeSuccess: true });
-};
-
-const authedLikeLectureComment = async (req, res, next) => {
-  const commentId = req.params.commentId;
-
-  let comment;
-
-  try {
     comment = await LectureComment.findById(commentId).populate("likedUser");
   } catch (err) {
     const error = new HttpError(
@@ -872,44 +802,6 @@ const authedLikeLectureComment = async (req, res, next) => {
 };
 
 const dislikeLectureComment = async (req, res, next) => {
-  const commentId = req.params.commentId;
-
-  let comment;
-
-  try {
-    comment = await LectureComment.findById(commentId);
-  } catch (err) {
-    const error = new HttpError(
-      "Comment finding is failed. Please try again.",
-      500
-    );
-
-    return next(error);
-  }
-
-  if (!comment) {
-    const error = new HttpError("There is no comment. Please try again.", 500);
-
-    return next(error);
-  }
-
-  comment.like -= 1;
-
-  try {
-    await comment.save();
-  } catch (err) {
-    const error = new HttpError(
-      "Saving comment is failed. Please try again.",
-      500
-    );
-
-    return next(error);
-  }
-
-  res.status(200).json({ commentDislikeSuccess: true });
-};
-
-const authedDislikeLectureComment = async (req, res, next) => {
   const commentId = req.params.commentId;
 
   let comment;
@@ -1301,47 +1193,6 @@ const likeLectureSubComment = async (req, res, next) => {
   let subComment;
 
   try {
-    subComment = await LectureSubComment.findById(subCommentId);
-  } catch (err) {
-    const error = new HttpError(
-      "subComment finding is failed. Please try again.",
-      500
-    );
-
-    return next(error);
-  }
-
-  if (!subComment) {
-    const error = new HttpError(
-      "There is no subComment. Please try again.",
-      500
-    );
-
-    return next(error);
-  }
-
-  subComment.like += 1;
-
-  try {
-    await subComment.save();
-  } catch (err) {
-    const error = new HttpError(
-      "Saving subComment is failed. Please try again.",
-      500
-    );
-
-    return next(error);
-  }
-
-  res.status(200).json({ commentLikeSuccess: true });
-};
-
-const authedLikeLectureSubComment = async (req, res, next) => {
-  const subCommentId = req.params.subCommentId;
-
-  let subComment;
-
-  try {
     subComment = await LectureSubComment.findById(subCommentId).populate(
       "likedUser"
     );
@@ -1433,47 +1284,6 @@ const dislikeLectureSubComment = async (req, res, next) => {
 
   subComment.like -= 1;
 
-  try {
-    await subComment.save();
-  } catch (err) {
-    const error = new HttpError(
-      "Saving subComment is failed. Please try again.",
-      500
-    );
-
-    return next(error);
-  }
-
-  res.status(200).json({ commentDislikeSuccess: true });
-};
-
-const authedDislikeLectureSubComment = async (req, res, next) => {
-  const subCommentId = req.params.subCommentId;
-
-  let subComment;
-
-  try {
-    subComment = await LectureSubComment.findById(subCommentId);
-  } catch (err) {
-    const error = new HttpError(
-      "subComment finding is failed. Please try again.",
-      500
-    );
-
-    return next(error);
-  }
-
-  if (!subComment) {
-    const error = new HttpError(
-      "There is no subComment. Please try again.",
-      500
-    );
-
-    return next(error);
-  }
-
-  subComment.like -= 1;
-
   let user;
 
   try {
@@ -1515,13 +1325,236 @@ const authedDislikeLectureSubComment = async (req, res, next) => {
   res.status(201).json({ commentDislikeSuccess: true });
 };
 
+// const createFixedComment = async (req, res, next) => {
+const createOrChangeFixedComment = async (req, res, next) => {
+  const lectureId = req.params.lectureId;
+
+  let lecture;
+
+  try {
+    lecture = await Lecture.findById(lectureId).populate("fixedComment");
+  } catch (err) {
+    const error = new HttpError(
+      "Lecture finding is failed. Please try again.",
+      500
+    );
+
+    return next(error);
+  }
+
+  if (!lecture) {
+    const error = new HttpError("There is no lecture. Please try again.", 500);
+
+    return next(error);
+  }
+
+  if (lecture.fixedComment.length > 1) {
+    const error = new HttpError("FixedComment cannot be multiple.", 500);
+
+    return next(error);
+  }
+
+  const { commentId } = req.body;
+
+  try {
+    if (lecture.fixedComment.length === 0) {
+      // 고정 코멘트 생성
+      lecture.fixedComment.push(commentId);
+    } else {
+      // 고정 코멘트 변경
+      lecture.fixedComment = [commentId];
+    }
+
+    await lecture.save();
+  } catch (err) {
+    const error = new HttpError(
+      "Creating fixedComment is failed. Please try again.",
+      500
+    );
+
+    return next(error);
+  }
+
+  let comment;
+
+  try {
+    comment = await LectureComment.findById(commentId);
+  } catch (err) {
+    const error = new HttpError(
+      "Finding comment is failed. Please try again.",
+      500
+    );
+
+    return next(error);
+  }
+
+  if (!comment) {
+    const error = new HttpError("There is no comment. Please try again.", 500);
+
+    return next(error);
+  }
+
+  let user;
+
+  try {
+    user = await User.findById(comment.creator._id);
+  } catch (err) {
+    const error = new HttpError(
+      "User finding is failed. Please try again.",
+      500
+    );
+
+    return next(error);
+  }
+
+  const userData = {
+    nickname: user.nickname,
+    email: user.email,
+    image: user.image,
+  };
+
+  const processedFixedComment = { ...comment._doc, ...userData };
+
+  res.status(200).json({ fixedComment: processedFixedComment });
+};
+
+const getFixedComment = async (req, res, next) => {
+  const lectureId = req.params.lectureId;
+
+  let lecture;
+
+  try {
+    lecture = await Lecture.findById(lectureId).populate("fixedComment");
+  } catch (err) {
+    const error = new HttpError(
+      "Lecture finding is failed. Please try again.",
+      500
+    );
+
+    return next(error);
+  }
+
+  if (!lecture) {
+    const error = new HttpError("There is no lecture. Please try again.", 500);
+
+    return next(error);
+  }
+
+  let fixedComment;
+
+  try {
+    fixedComment = lecture.fixedComment;
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching fixedComment is failed. Please try again.",
+      500
+    );
+
+    return next(error);
+  }
+
+  if (lecture.fixedComment.length === 0) {
+    return res.status(200).json({ fixedComment });
+  }
+
+  let user;
+
+  try {
+    user = await User.findById(fixedComment[0].creator._id);
+  } catch (err) {
+    const error = new HttpError(
+      "User finding is failed. Please try again.",
+      500
+    );
+
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("There is no user. Please try again.", 500);
+
+    return next(error);
+  }
+
+  const userData = {
+    nickname: user.nickname,
+    email: user.email,
+    image: user.image,
+  };
+
+  const processedFixedComment = [{ ...fixedComment[0]._doc, ...userData }];
+
+  res.status(200).json({ fixedComment: processedFixedComment });
+};
+
+const deleteFixedComment = async (req, res, next) => {
+  const lectureId = req.params.lectureId;
+
+  let lecture;
+
+  try {
+    lecture = await Lecture.findById(lectureId).populate("fixedComment");
+  } catch (err) {
+    const error = new HttpError(
+      "Lecture finding is failed. Please try again.",
+      500
+    );
+
+    return next(error);
+  }
+
+  if (!lecture) {
+    const error = new HttpError("There is no lecture. Please try again.", 500);
+
+    return next(error);
+  }
+
+  try {
+    lecture.fixedComment = [];
+
+    await lecture.save();
+  } catch (err) {
+    const error = new HttpError(
+      "Deleting fixedComment is failed. Please try again.",
+      500
+    );
+
+    return next(error);
+  }
+
+  res.status(200).json({ deleteSuccess: true });
+};
+
+const getSearchedLecture = async (req, res, next) => {
+  let lectures;
+
+  try {
+    lectures = await Lecture.find({}, "-description -link -file");
+  } catch (err) {
+    const error = new HttpError(
+      "Lecture finding is failed. Please try again.",
+      500
+    );
+
+    return next(error);
+  }
+
+  const keyword = req.query.keyword;
+
+  const searchedLectures = lectures.filter((lecture) =>
+    lecture.title.includes(keyword)
+  );
+
+  res.status(200).json({
+    searchedLectures,
+  });
+};
+
 exports.getLectures = getLectures;
 exports.getLecture = getLecture;
 exports.createLecture = createLecture;
 exports.likeLecture = likeLecture;
-exports.authedLikeLecture = authedLikeLecture;
 exports.dislikeLecture = dislikeLecture;
-exports.authedDislikeLecture = authedDislikeLecture;
 exports.updateLectureById = updateLectureById;
 exports.deleteLectureById = deleteLectureById;
 exports.createLectureComments = createLectureComments;
@@ -1529,14 +1562,14 @@ exports.getLectureComments = getLectureComments;
 exports.deleteLectureComment = deleteLectureComment;
 exports.updateLectureComment = updateLectureComment;
 exports.likeLectureComment = likeLectureComment;
-exports.authedLikeLectureComment = authedLikeLectureComment;
 exports.dislikeLectureComment = dislikeLectureComment;
-exports.authedDislikeLectureComment = authedDislikeLectureComment;
 exports.createLectureSubComment = createLectureSubComment;
 exports.getSubComment = getSubComment;
 exports.deleteLectureSubComment = deleteLectureSubComment;
 exports.updateLectureSubComment = updateLectureSubComment;
 exports.likeLectureSubComment = likeLectureSubComment;
-exports.authedLikeLectureSubComment = authedLikeLectureSubComment;
 exports.dislikeLectureSubComment = dislikeLectureSubComment;
-exports.authedDislikeLectureSubComment = authedDislikeLectureSubComment;
+exports.createOrChangeFixedComment = createOrChangeFixedComment;
+exports.getFixedComment = getFixedComment;
+exports.deleteFixedComment = deleteFixedComment;
+exports.getSearchedLecture = getSearchedLecture;
