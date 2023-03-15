@@ -1,3 +1,4 @@
+const fs = require("fs");
 const { validationResult } = require("express-validator");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -133,6 +134,7 @@ const login = async (req, res, next) => {
       {
         userId: existingUser.id,
         email: existingUser.email,
+        nickname: existingUser.nickname,
         manager: existingUser.role === 1 ? true : false,
       },
       process.env.JWT_KEY,
@@ -147,11 +149,13 @@ const login = async (req, res, next) => {
     return next(error);
   }
 
+  // localStorage에 저장되는 것
   res.json({
     userId: existingUser.id,
     email: existingUser.email,
     token,
     manager: existingUser.role !== 0 ? true : false,
+    nickname: existingUser.nickname,
   });
 };
 
@@ -341,6 +345,12 @@ const changeImage = async (req, res, next) => {
     return next(error);
   }
 
+  if (currentUser.image) {
+    fs.unlink(currentUser.image, (err) => {
+      console.log(err);
+    });
+  }
+
   try {
     await User.updateOne({ _id: currentUser._id }, { image: image });
   } catch (err) {
@@ -440,7 +450,7 @@ const changePswd = async (req, res, next) => {
   res.status(201).json({ changeSuccess: true });
 };
 
-const checkLike = async (req, res, next) => {
+const checkLikeLecture = async (req, res, next) => {
   let user;
 
   try {
@@ -460,7 +470,7 @@ const checkLike = async (req, res, next) => {
     next(error);
   }
 
-  const currLectureId = req.body.lectureId;
+  const currLectureId = req.params.lectureId;
 
   let isLiked = false;
 
@@ -478,6 +488,53 @@ const checkLike = async (req, res, next) => {
       "Likes data searching is failed. Please try again.",
       500
     );
+
+    return next(error);
+  }
+
+  res.status(200).json({ isLiked });
+};
+
+const checkLikeQA = async (req, res, next) => {
+  let user;
+
+  try {
+    user = await User.findById(req.userData.userId).populate("likeQA");
+  } catch (err) {
+    const error = new HttpError(
+      "User searching is failed... Please try again.",
+      500
+    );
+
+    next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("There is no user!", 500);
+
+    next(error);
+  }
+
+  const currQaId = req.params.qaId;
+
+  let isLiked = false;
+
+  try {
+    for (const like of user.likeQA) {
+      const qa = like.toObject({ getters: true });
+
+      if (currQaId === qa.id) {
+        isLiked = true;
+        break;
+      }
+    }
+  } catch (err) {
+    const error = new HttpError(
+      "Likes data searching is failed. Please try again.",
+      500
+    );
+
+    return next(error);
   }
 
   res.status(200).json({ isLiked });
@@ -576,6 +633,37 @@ const deleteLikeLecture = async (req, res, next) => {
   res.status(200).json({ deleteSuccess: true });
 };
 
+const getUserQA = async (req, res, next) => {
+  const userId = req.userData.userId;
+
+  let user;
+
+  try {
+    user = await User.findById(userId).populate("myQA");
+  } catch (err) {
+    const error = new HttpError(
+      "User finding is failed. Please try again.",
+      500
+    );
+
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("There is no user. Please try again.", 500);
+
+    return next(error);
+  }
+
+  let qas = [];
+
+  user.myQA.forEach((qa) => {
+    qas.push(qa.toObject({ getters: true }));
+  });
+
+  res.status(200).json({ qas });
+};
+
 exports.signup = signup;
 exports.login = login;
 exports.withdraw = withdraw;
@@ -583,6 +671,8 @@ exports.getUserInfo = getUserInfo;
 exports.changeNickname = changeNickname;
 exports.changeImage = changeImage;
 exports.changePswd = changePswd;
-exports.checkLike = checkLike;
+exports.checkLikeLecture = checkLikeLecture;
+exports.checkLikeQA = checkLikeQA;
 exports.getLikeLecture = getLikeLecture;
 exports.deleteLikeLecture = deleteLikeLecture;
+exports.getUserQA = getUserQA;
